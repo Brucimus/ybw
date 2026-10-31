@@ -29,6 +29,12 @@ class WatanabeApp {
     // State for Photo Selection modal
     this.pendingPhotoSelection = null; // { type: 'side' | 'appendix', paragraphIndex?: number }
 
+    // State for Paginated Memoir Reader
+    this.currentMemoirChapterIndex = parseInt(localStorage.getItem('bw_memoir_active_chapter') || '0', 10);
+    this.memoirFontSize = 'normal'; // 'normal' | 'large' | 'xlarge'
+    this.memoirViewMode = 'chapter'; // 'chapter' | 'continuous'
+    this.memoirTocOpen = false;
+
     this.initDOM();
     this.bindEvents();
     this.renderCurrentView();
@@ -94,12 +100,25 @@ class WatanabeApp {
       });
     }
 
-    // Close modals on escape key
+    // Close modals on escape key & arrow navigation for memoir reader
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         this.closeLightbox();
         this.closeModal(this.uploadModal);
         this.closeModal(this.photoSelectModal);
+        this.closeMemoirToc();
+      }
+
+      // Arrow navigation for memoir reader
+      if (this.currentView === 'story-reader' && this.currentStoryId === 'memoir-bringing-people-together') {
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          this.stepMemoirChapter(-1);
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          this.stepMemoirChapter(1);
+        }
       }
     });
 
@@ -214,7 +233,7 @@ class WatanabeApp {
     if (!container) return;
 
     // Filter categories
-    const categories = ['All', 'Little Tokyo Chronicles', 'Community Building', 'Reflections & Heritage'];
+    const categories = ['All', 'Memoir & Archives', 'Little Tokyo Chronicles', 'Community Building', 'Reflections & Heritage'];
 
     if (filterPillsContainer) {
       filterPillsContainer.innerHTML = categories.map(cat => `
@@ -252,18 +271,24 @@ class WatanabeApp {
   createStoryCardHTML(story) {
     const totalPhotos = (story.sidePhotos?.length || 0) + (story.appendixPhotos?.length || 0);
     const coverImage = story.featuredImage || 'images/little_tokyo_historic.jpg';
+    const isBookMemoir = story.chapters && story.chapters.length > 0;
 
     return `
-      <article class="story-card" data-story-id="${story.id}">
+      <article class="story-card ${isBookMemoir ? 'story-card-memoir' : ''}" data-story-id="${story.id}">
         <div class="story-card-cover">
           <img src="${coverImage}" alt="${story.title}" loading="lazy">
-          <span class="card-category-badge">${story.category || 'Chronicle'}</span>
-          ${totalPhotos > 0 ? `
+          <span class="card-category-badge">${isBookMemoir ? 'Full Book Memoir' : (story.category || 'Chronicle')}</span>
+          ${isBookMemoir ? `
+            <span class="card-photo-count-badge" style="background: rgba(194, 79, 51, 0.95); font-weight: 700;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              ${story.chapters.length} Chapters
+            </span>
+          ` : (totalPhotos > 0 ? `
             <span class="card-photo-count-badge">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               ${totalPhotos} ${totalPhotos === 1 ? 'Photo' : 'Photos'}
             </span>
-          ` : ''}
+          ` : '')}
         </div>
         <div class="story-card-body">
           <div class="story-card-meta">
@@ -272,9 +297,10 @@ class WatanabeApp {
             <span>${story.readTime || '5 min read'}</span>
           </div>
           <h3 class="story-card-title">${story.title}</h3>
+          ${story.subtitle ? `<p style="font-family: var(--font-serif); font-style: italic; font-size: 0.92rem; color: var(--ink-secondary); margin-bottom: 0.5rem; line-height: 1.4;">${story.subtitle}</p>` : ''}
           <p class="story-card-summary">${story.summary || ''}</p>
           <div class="story-card-footer">
-            <span>Read Story</span>
+            <span>${isBookMemoir ? 'Read Full Memoir (29 Chapters)' : 'Read Story'}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
           </div>
         </div>
@@ -307,6 +333,12 @@ class WatanabeApp {
           <button class="btn-primary" style="margin-top: 1.5rem;" onclick="window.appInstance.navigateTo('stories')">Return to Stories</button>
         </div>
       `;
+      return;
+    }
+
+    // Check if this story has chapters (such as the 29-chapter memoir)
+    if (story.chapters && story.chapters.length > 0) {
+      this.renderPaginatedMemoirReader(story);
       return;
     }
 
@@ -445,6 +477,412 @@ class WatanabeApp {
         ${appendixHTML}
       </div>
     `;
+  }
+
+  /* ==========================================================================
+     PAGINATED MEMOIR READER VIEW (29 CHAPTERS)
+     Features Chapter-by-Chapter pagination, reading progress, TOC drawer,
+     archival sidebars, photo callouts, font resizing, and continuous mode.
+     ========================================================================== */
+  renderPaginatedMemoirReader(story) {
+    const readerContainer = document.getElementById('storyReaderContent');
+    if (!readerContainer) return;
+
+    const totalChapters = (story.chapters || []).length;
+    if (totalChapters === 0) return;
+
+    // Ensure valid current chapter index
+    if (this.currentMemoirChapterIndex < 0) this.currentMemoirChapterIndex = 0;
+    if (this.currentMemoirChapterIndex >= totalChapters) this.currentMemoirChapterIndex = totalChapters - 1;
+
+    const curChapter = story.chapters[this.currentMemoirChapterIndex];
+    const prevChapter = this.currentMemoirChapterIndex > 0 ? story.chapters[this.currentMemoirChapterIndex - 1] : null;
+    const nextChapter = this.currentMemoirChapterIndex < totalChapters - 1 ? story.chapters[this.currentMemoirChapterIndex + 1] : null;
+
+    const progressPct = Math.round(((this.currentMemoirChapterIndex + 1) / totalChapters) * 100);
+
+    const renderChapterItemsHTML = (chapter) => {
+      return (chapter.items || []).map((item) => {
+        if (item.type === 'sidebar') {
+          return `
+            <aside class="memoir-sidebar-card" aria-label="Sidebar: ${escapeHTML(item.title || 'Archival Note')}">
+              <div class="sidebar-header">
+                <span class="sidebar-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Archival Sidebar
+                </span>
+                <span class="sidebar-title">${escapeHTML(item.title || 'Historical Note')}</span>
+              </div>
+              <div class="sidebar-body">
+                ${item.html}
+              </div>
+            </aside>
+          `;
+        }
+
+        if (item.type === 'photo_callout') {
+          const imageList = Array.isArray(item.images)
+            ? item.images
+            : (item.image ? [item.image] : (item.imageUrl ? [item.imageUrl] : []));
+          const plateLabel = item.photoNumber ? `Plate #${item.photoNumber}` : 'Archival Photo Reference';
+          const captionText = item.caption || item.text || '';
+
+          let imagesHTML = '';
+          if (imageList.length === 1) {
+            const imgSrc = imageList[0];
+            imagesHTML = `
+              <div class="photo-callout-image-wrap" onclick="window.appInstance.openLightbox('', '${escapeHTML(imgSrc)}', '${escapeHTML(plateLabel)}', '${escapeHTML(captionText)}')">
+                <img src="${escapeHTML(imgSrc)}" alt="${escapeHTML(captionText || plateLabel)}" loading="lazy" class="photo-callout-img" onerror="this.closest('.photo-callout-image-wrap').style.display='none'">
+                <div class="zoom-indicator" title="Click to view full size">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                  <span>Enlarge</span>
+                </div>
+              </div>
+            `;
+          } else if (imageList.length > 1) {
+            imagesHTML = `
+              <div class="photo-callout-grid">
+                ${imageList.map((imgSrc, idx) => `
+                  <div class="photo-callout-image-wrap grid-item" onclick="window.appInstance.openLightbox('', '${escapeHTML(imgSrc)}', '${escapeHTML(plateLabel)} (${idx + 1}/${imageList.length})', '${escapeHTML(captionText)}')">
+                    <img src="${escapeHTML(imgSrc)}" alt="${escapeHTML(plateLabel)}" loading="lazy" class="photo-callout-img" onerror="this.closest('.photo-callout-image-wrap').style.display='none'">
+                    <div class="zoom-indicator" title="Click to view full size">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+
+          return `
+            <figure class="memoir-photo-callout-card ${imageList.length > 0 ? 'has-photo' : 'text-only'}" aria-label="Archival Photo Record">
+              <div class="photo-callout-header">
+                <span class="photo-callout-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  Archival Photo Reference
+                </span>
+                ${item.photoNumber ? `<span class="photo-plate-tag">${plateLabel}</span>` : ''}
+              </div>
+              ${imagesHTML}
+              <div class="photo-callout-body">
+                <p>${item.html}</p>
+              </div>
+            </figure>
+          `;
+        }
+
+        // Standard body paragraph
+        return `<p class="memoir-p">${item.html}</p>`;
+      }).join('');
+    };
+
+    // Body content: Either single chapter or all chapters in continuous mode
+    let mainContentHTML = '';
+    if (this.memoirViewMode === 'continuous') {
+      mainContentHTML = story.chapters.map(ch => `
+        <article class="memoir-continuous-chapter" id="chapter-anchor-${ch.chapterNumber}">
+          <header class="memoir-chapter-header">
+            <div class="memoir-chapter-badge-row">
+              <span class="memoir-chapter-pill">Chapter ${ch.chapterNumber} of ${totalChapters}</span>
+              <span class="memoir-meta-pill">•</span>
+              <span class="memoir-meta-pill">${ch.readTime}</span>
+              <span class="memoir-meta-pill">•</span>
+              <span class="memoir-meta-pill">${ch.wordCount.toLocaleString()} words</span>
+            </div>
+            <h2 class="memoir-chapter-title">${ch.title}</h2>
+          </header>
+          <div class="memoir-prose-container font-size-${this.memoirFontSize}">
+            ${renderChapterItemsHTML(ch)}
+          </div>
+        </article>
+      `).join('');
+    } else {
+      mainContentHTML = `
+        <article class="memoir-single-chapter">
+          <header class="memoir-chapter-header">
+            <span class="memoir-book-tagline">Bringing People Together to Make a Better World</span>
+            <div class="memoir-chapter-badge-row">
+              <span class="memoir-chapter-pill">Chapter ${curChapter.chapterNumber} of ${totalChapters}</span>
+              <span class="memoir-meta-pill">•</span>
+              <span class="memoir-meta-pill">${curChapter.readTime}</span>
+              <span class="memoir-meta-pill">•</span>
+              <span class="memoir-meta-pill">${curChapter.wordCount.toLocaleString()} words</span>
+              <span class="memoir-meta-pill">•</span>
+              <span class="memoir-meta-pill">${progressPct}% of Book</span>
+            </div>
+            <h1 class="memoir-chapter-title">${curChapter.title}</h1>
+          </header>
+
+          <div class="memoir-prose-container font-size-${this.memoirFontSize}">
+            ${renderChapterItemsHTML(curChapter)}
+          </div>
+
+          <!-- Bottom Pagination Controls -->
+          <nav class="memoir-bottom-nav" aria-label="Chapter Pagination">
+            ${prevChapter ? `
+              <button class="memoir-page-card prev" onclick="window.appInstance.goToMemoirChapter(${this.currentMemoirChapterIndex - 1})">
+                <span class="page-card-sub">← Previous Chapter (${curChapter.chapterNumber - 1})</span>
+                <span class="page-card-title">${prevChapter.title}</span>
+              </button>
+            ` : `<div class="memoir-page-card-empty"></div>`}
+
+            <div class="memoir-page-center-indicator">
+              <button class="btn-secondary" onclick="window.appInstance.openMemoirToc()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line></svg>
+                Table of Contents
+              </button>
+              <span class="page-progress-pill">Chapter ${curChapter.chapterNumber} of ${totalChapters} (${progressPct}%)</span>
+              <button class="btn-text-only" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">↑ Top of Chapter</button>
+            </div>
+
+            ${nextChapter ? `
+              <button class="memoir-page-card next" onclick="window.appInstance.goToMemoirChapter(${this.currentMemoirChapterIndex + 1})">
+                <span class="page-card-sub">Next Chapter (${curChapter.chapterNumber + 1}) →</span>
+                <span class="page-card-title">${nextChapter.title}</span>
+              </button>
+            ` : `
+              <button class="memoir-page-card finish" onclick="window.appInstance.goToMemoirChapter(0)">
+                <span class="page-card-sub">Completed! ★</span>
+                <span class="page-card-title">Return to Introduction</span>
+              </button>
+            `}
+          </nav>
+        </article>
+      `;
+    }
+
+    // Build Photographic Appendix if present
+    let appendixHTML = '';
+    if (story.appendixPhotos && story.appendixPhotos.length > 0) {
+      const appendixCardsHTML = story.appendixPhotos.map((item, index) => {
+        const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+        const plateLabel = `Plate ${romanNumerals[index] || (index + 1)}`;
+        const photoData = this.storage.getPhotoById(item.photoId) || {
+          title: item.title || 'Archive Item',
+          url: item.url || item.photoId,
+          caption: item.caption || '',
+          notes: item.notes || ''
+        };
+        const caption = item.caption || photoData.caption || '';
+        const notes = item.notes || photoData.notes || '';
+
+        return `
+          <div class="appendix-card">
+            <span class="appendix-plate-number">${plateLabel}</span>
+            <div class="appendix-photo-frame" onclick="window.appInstance.openLightbox('${photoData.id || ''}', '${photoData.url}', '${escapeHTML(photoData.title || plateLabel)}', '${escapeHTML(caption)}')">
+              <img src="${photoData.url}" alt="${photoData.title || plateLabel}" loading="lazy">
+              <div class="zoom-indicator" title="View Full Size">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </div>
+            </div>
+            ${caption ? `<p class="appendix-photo-caption">${caption}</p>` : ''}
+            ${notes ? `<p class="appendix-photo-notes">${notes}</p>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      appendixHTML = `
+        <section class="story-appendix-section" aria-label="Memoir Photographic Appendix">
+          <div class="appendix-header">
+            <span class="appendix-badge">Archival Appendix</span>
+            <div>
+              <h3 class="appendix-title">Photographic Records & Historic Documents</h3>
+              <p class="appendix-description">Documentary images from Bill Watanabe's personal archives and Little Tokyo institutions.</p>
+            </div>
+          </div>
+          <div class="appendix-grid">
+            ${appendixCardsHTML}
+          </div>
+        </section>
+      `;
+    }
+
+    // Assemble full reader template
+    readerContainer.innerHTML = `
+      <div class="memoir-reader-view">
+        <!-- Pinned Reading Progress Bar -->
+        <div class="memoir-reading-progress-track">
+          <div class="memoir-reading-progress-fill" style="width: ${progressPct}%;"></div>
+        </div>
+
+        <!-- Sticky Top Navigation & Chapter Bar -->
+        <div class="memoir-top-nav-bar">
+          <div class="memoir-top-nav-left">
+            <button class="btn-back" onclick="window.appInstance.navigateTo('stories')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+              <span>Stories</span>
+            </button>
+
+            <!-- Table of Contents trigger -->
+            <button class="btn-toc" id="memoirTocBtn" onclick="window.appInstance.openMemoirToc()" title="Open Table of Contents (29 Chapters)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+              <span>Contents</span>
+              <span class="toc-counter">${curChapter.chapterNumber}/${totalChapters}</span>
+            </button>
+
+            <!-- Quick Chapter Dropdown with Step buttons -->
+            <div class="memoir-chapter-quick-nav">
+              <button class="btn-step" onclick="window.appInstance.stepMemoirChapter(-1)" ${!prevChapter ? 'disabled' : ''} title="Previous Chapter (← Left Arrow)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              <select class="memoir-chapter-dropdown" aria-label="Jump to Chapter" onchange="window.appInstance.goToMemoirChapter(parseInt(this.value, 10))">
+                ${story.chapters.map((ch, idx) => `
+                  <option value="${idx}" ${idx === this.currentMemoirChapterIndex ? 'selected' : ''}>
+                    Ch ${ch.chapterNumber}: ${ch.title}
+                  </option>
+                `).join('')}
+              </select>
+              <button class="btn-step" onclick="window.appInstance.stepMemoirChapter(1)" ${!nextChapter ? 'disabled' : ''} title="Next Chapter (→ Right Arrow)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Reader Controls: Font Size, View Mode, Print -->
+          <div class="memoir-controls-group">
+            <div class="btn-font-size" title="Adjust Font Size">
+              <span>Text</span>
+              <span class="btn-font-toggle ${this.memoirFontSize === 'normal' ? 'active' : ''}" onclick="window.appInstance.setMemoirFontSize('normal')">A</span>
+              <span class="btn-font-toggle ${this.memoirFontSize === 'large' ? 'active' : ''}" onclick="window.appInstance.setMemoirFontSize('large')">A+</span>
+              <span class="btn-font-toggle ${this.memoirFontSize === 'xlarge' ? 'active' : ''}" onclick="window.appInstance.setMemoirFontSize('xlarge')">A++</span>
+            </div>
+
+            <button class="btn-view-mode" onclick="window.appInstance.toggleMemoirViewMode()" title="Toggle Paginated vs Continuous Reading">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              <span>${this.memoirViewMode === 'continuous' ? 'Chapter View' : 'All Chapters'}</span>
+            </button>
+
+            <button class="btn-secondary" onclick="window.print()" title="Print / Save PDF">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Content (Chapter or Continuous) -->
+        ${mainContentHTML}
+
+        <!-- Archival Photographic Appendix -->
+        ${appendixHTML}
+
+        <!-- Table of Contents Slide-out Drawer -->
+        <div class="memoir-toc-overlay ${this.memoirTocOpen ? 'open' : ''}" id="memoirTocOverlay" onclick="if(event.target === this) window.appInstance.closeMemoirToc()">
+          <div class="memoir-toc-drawer" aria-label="Table of Contents">
+            <div class="memoir-toc-header">
+              <div>
+                <h3>Table of Contents</h3>
+                <p>Bringing People Together to Make a Better World • 29 Chapters</p>
+              </div>
+              <button class="btn-close-drawer" onclick="window.appInstance.closeMemoirToc()" aria-label="Close Table of Contents">✕</button>
+            </div>
+
+            <div class="memoir-toc-search-wrap">
+              <input type="text" id="memoirTocSearchInput" class="memoir-toc-search-input" placeholder="Search chapters by keyword (e.g. Budokan, Housing)..." oninput="window.appInstance.filterMemoirToc(this.value)">
+            </div>
+
+            <div class="memoir-toc-list" id="memoirTocList">
+              ${story.chapters.map((ch, idx) => `
+                <div class="memoir-toc-item ${idx === this.currentMemoirChapterIndex ? 'active' : ''}" onclick="window.appInstance.goToMemoirChapter(${idx})">
+                  <span class="toc-item-number">${ch.chapterNumber.toString().padStart(2, '0')}</span>
+                  <div class="toc-item-info">
+                    <h4 class="toc-item-title">${ch.title}</h4>
+                    <div class="toc-item-meta">
+                      <span>${ch.readTime}</span>
+                      <span>•</span>
+                      <span>${ch.wordCount.toLocaleString()} words</span>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  goToMemoirChapter(index) {
+    const story = this.storage.getStoryById('memoir-bringing-people-together');
+    if (!story || !story.chapters) return;
+    if (index < 0 || index >= story.chapters.length) return;
+
+    this.currentMemoirChapterIndex = index;
+    try {
+      localStorage.setItem('bw_memoir_active_chapter', index.toString());
+    } catch (e) { }
+
+    this.memoirTocOpen = false;
+    this.renderPaginatedMemoirReader(story);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  stepMemoirChapter(delta) {
+    this.goToMemoirChapter(this.currentMemoirChapterIndex + delta);
+  }
+
+  openMemoirToc() {
+    this.memoirTocOpen = true;
+    const overlay = document.getElementById('memoirTocOverlay');
+    if (overlay) overlay.classList.add('open');
+    setTimeout(() => {
+      const input = document.getElementById('memoirTocSearchInput');
+      if (input) input.focus();
+    }, 100);
+  }
+
+  closeMemoirToc() {
+    this.memoirTocOpen = false;
+    const overlay = document.getElementById('memoirTocOverlay');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  toggleMemoirToc() {
+    if (this.memoirTocOpen) this.closeMemoirToc();
+    else this.openMemoirToc();
+  }
+
+  filterMemoirToc(query) {
+    const story = this.storage.getStoryById('memoir-bringing-people-together');
+    const listContainer = document.getElementById('memoirTocList');
+    if (!story || !story.chapters || !listContainer) return;
+
+    const q = (query || '').toLowerCase().trim();
+    const filtered = q
+      ? story.chapters.filter(ch => ch.title.toLowerCase().includes(q) || (ch.chapterNumber + '').includes(q))
+      : story.chapters;
+
+    listContainer.innerHTML = filtered.map(ch => {
+      const idx = story.chapters.findIndex(c => c.chapterNumber === ch.chapterNumber);
+      return `
+        <div class="memoir-toc-item ${idx === this.currentMemoirChapterIndex ? 'active' : ''}" onclick="window.appInstance.goToMemoirChapter(${idx})">
+          <span class="toc-item-number">${ch.chapterNumber.toString().padStart(2, '0')}</span>
+          <div class="toc-item-info">
+            <h4 class="toc-item-title">${ch.title}</h4>
+            <div class="toc-item-meta">
+              <span>${ch.readTime}</span>
+              <span>•</span>
+              <span>${ch.wordCount.toLocaleString()} words</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('') || '<p style="text-align: center; color: var(--ink-muted); padding: 2rem 1rem;">No chapters matching your search.</p>';
+  }
+
+  setMemoirFontSize(size) {
+    this.memoirFontSize = size;
+    const story = this.storage.getStoryById('memoir-bringing-people-together');
+    if (story && story.chapters) {
+      this.renderPaginatedMemoirReader(story);
+    }
+  }
+
+  toggleMemoirViewMode() {
+    this.memoirViewMode = this.memoirViewMode === 'chapter' ? 'continuous' : 'chapter';
+    const story = this.storage.getStoryById('memoir-bringing-people-together');
+    if (story && story.chapters) {
+      this.renderPaginatedMemoirReader(story);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   /* ==========================================================================

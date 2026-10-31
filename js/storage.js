@@ -4,19 +4,19 @@
  */
 
 const STORAGE_KEYS = {
-  STORIES: 'bill_watanabe_stories_v1',
+  STORIES: 'bill_watanabe_stories_v2',
   PHOTOS: 'bill_watanabe_photos_v1',
 };
 
 // Initial default photography vault
 const DEFAULT_PHOTOS = [
   {
-    id: 'photo_bill_portrait',
+    id: 'photo_bill_watanabe',
     title: 'Bill Watanabe in His Archive Study',
     year: '2024',
     location: 'Los Angeles, CA',
     caption: 'Reflecting on over 40 years of community organizing, social services, and oral history preservation in Little Tokyo.',
-    url: 'images/bill_portrait.jpg',
+    url: 'images/picBill2008.jpg',
     tags: ['Portrait', 'Archives', 'Leadership'],
     dateAdded: '2026-10-16'
   },
@@ -98,7 +98,7 @@ const DEFAULT_STORIES = [
         notes: 'Photo courtesy of Little Tokyo Historical Society archives.'
       },
       {
-        photoId: 'photo_bill_portrait',
+        photoId: 'photo_bill_watanabe',
         caption: 'Bill Watanabe reflecting in his personal study surrounded by four decades of community logs and oral history tapes.',
         notes: 'Photographed in Los Angeles, 2024.'
       }
@@ -167,7 +167,7 @@ const DEFAULT_STORIES = [
     ],
     appendixPhotos: [
       {
-        photoId: 'photo_bill_portrait',
+        photoId: 'photo_bill_watanabe',
         caption: 'Bill Watanabe reviewing historical records of community garden initiatives across Southern California.',
         notes: 'Los Angeles Archive Collection.'
       }
@@ -184,8 +184,27 @@ class StoryArchiveStorage {
     if (!localStorage.getItem(STORAGE_KEYS.PHOTOS)) {
       this.savePhotos(DEFAULT_PHOTOS);
     }
+    
+    const initialStories = typeof MEMOIR_STORY !== 'undefined'
+      ? [MEMOIR_STORY, ...DEFAULT_STORIES.filter(s => s.id !== MEMOIR_STORY.id)]
+      : DEFAULT_STORIES;
+
     if (!localStorage.getItem(STORAGE_KEYS.STORIES)) {
-      this.saveStories(DEFAULT_STORIES);
+      this.saveStories(initialStories);
+    } else {
+      // Ensure MEMOIR_STORY is merged if missing or updated with full chapters
+      if (typeof MEMOIR_STORY !== 'undefined') {
+        const stories = this.getStories();
+        const memoirIndex = stories.findIndex(s => s.id === MEMOIR_STORY.id);
+        if (memoirIndex === -1) {
+          stories.unshift(MEMOIR_STORY);
+          this.saveStories(stories);
+        } else {
+          // Keep code-defined MEMOIR_STORY always synced so data updates immediately appear
+          stories[memoirIndex] = MEMOIR_STORY;
+          this.saveStories(stories);
+        }
+      }
     }
   }
 
@@ -265,11 +284,11 @@ class StoryArchiveStorage {
 
   addStory(storyData) {
     const stories = this.getStories();
-    
+
     // Estimate reading time from text content
     const totalWords = (storyData.paragraphs || []).join(' ').split(/\s+/).filter(Boolean).length;
     const readMinutes = Math.max(1, Math.ceil(totalWords / 180));
-    
+
     const newStory = {
       id: storyData.id || `story-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       title: storyData.title || 'Untitled Story',
@@ -335,8 +354,11 @@ class StoryArchiveStorage {
   }
 
   resetToDefaults() {
+    const baseStories = typeof MEMOIR_STORY !== 'undefined'
+      ? [MEMOIR_STORY, ...DEFAULT_STORIES.filter(s => s.id !== MEMOIR_STORY.id)]
+      : DEFAULT_STORIES;
     this.savePhotos(DEFAULT_PHOTOS);
-    this.saveStories(DEFAULT_STORIES);
+    this.saveStories(baseStories);
   }
 }
 
