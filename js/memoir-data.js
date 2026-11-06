@@ -97,7 +97,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "1",
-          "image": "images/Photo#1.jpg",
+          "image": "images/Photo1.jpg",
           "html": "(Photo #1:  My father Rokuro and my uncle Tomio (US Army) drove to Tule Lake in March of 1946 to pick up my mother, me and my younger brother and return to Los Angeles.  My mother had renounced her US citizenship and was not allowed to leave until the camp was closed in March)",
           "text": "(Photo #1:  My father Rokuro and my uncle Tomio (US Army) drove to Tule Lake in March of 1946 to pick up my mother, me and my younger brother and return to Los Angeles.  My mother had renounced her US citizenship and was not allowed to leave until the camp was closed in March)"
         },
@@ -1395,7 +1395,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "2",
-          "image": "images/Photo#2.jpg",
+          "image": "images/Photo2.jpg",
           "html": "See Photo #2:  A3PCON celebrates its 25th anniversary at the patio of Casa Heiwa.  The ladies in the front row are (from left):  Gladys Lee, Judy Chu, ???, and Deborah Ching.  The men in the back row are Dr. Ford Kuramoto, Mark Mayeda, Warren Furutani, Mike Watanabe, Bill Watanabe, Ron Wakabayashi, and Rev. Kay Kokubun.  All had served as Presidents of A3PCON.",
           "text": "See Photo #2:  A3PCON celebrates its 25th anniversary at the patio of Casa Heiwa.  The ladies in the front row are (from left):  Gladys Lee, Judy Chu, ???, and Deborah Ching.  The men in the back row are Dr. Ford Kuramoto, Mark Mayeda, Warren Furutani, Mike Watanabe, Bill Watanabe, Ron Wakabayashi, and Rev. Kay Kokubun.  All had served as Presidents of A3PCON."
         },
@@ -1584,7 +1584,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "3",
-          "image": "images/Photo#3.jpg",
+          "image": "images/Photo3.jpg",
           "html": "See Photo #3:  Council chambers decision to keep the Firm Building as affordable housing and to award the building to LTSC.  Pictured in the Rafu Shimpo photo from left are:  Kathy Masaoka and Sumiko Ono of LTSC, attorney Fred Nakamura, seated are Gilda Haas of Mike Woo’s staff and attorney Judy Nishimoto, facing a city staffer and Cooke Sunoo of the CRA.",
           "text": "See Photo #3:  Council chambers decision to keep the Firm Building as affordable housing and to award the building to LTSC.  Pictured in the Rafu Shimpo photo from left are:  Kathy Masaoka and Sumiko Ono of LTSC, attorney Fred Nakamura, seated are Gilda Haas of Mike Woo’s staff and attorney Judy Nishimoto, facing a city staffer and Cooke Sunoo of the CRA."
         },
@@ -1626,14 +1626,14 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "4",
-          "image": "images/Photo#4.jpg",
+          "image": "images/Photo4.jpg",
           "html": "See Photo #4:  This is a Rafu Shimpo article of the Grand Opening of the San Pedro Firm Building renovation project, with a photo of the elated tenant Yoshiko Takai.",
           "text": "See Photo #4:  This is a Rafu Shimpo article of the Grand Opening of the San Pedro Firm Building renovation project, with a photo of the elated tenant Yoshiko Takai."
         },
         {
           "type": "photo_callout",
           "photoNumber": "5",
-          "image": "images/Photo#5.jpeg",
+          "image": "images/Photo5.jpeg",
           "html": "See Photo #5:  This is the San Pedro Firm Building as it stands today.",
           "text": "See Photo #5:  This is the San Pedro Firm Building as it stands today."
         },
@@ -1696,7 +1696,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "6",
-          "image": "images/Photo#6jpeg.jpeg",
+          "image": "images/Photo6.jpeg",
           "html": "See Photo #6:  Casa Heiwa as it stands today on 3rd Street on the southern edge of Little Tokyo, providing 100 units of affordable housing, and also on-site social services and childcare center.",
           "text": "See Photo #6:  Casa Heiwa as it stands today on 3rd Street on the southern edge of Little Tokyo, providing 100 units of affordable housing, and also on-site social services and childcare center."
         },
@@ -1851,7 +1851,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "7",
-          "image": "images/Photo#7.jpeg",
+          "image": "images/Photo7.jpeg",
           "html": "See Photo#7:  The Union Center for the Arts as it stands today on Judge John Aiso Street, housing the East West Players Theater, Visual Communications, and LA Artcore.",
           "text": "See Photo#7:  The Union Center for the Arts as it stands today on Judge John Aiso Street, housing the East West Players Theater, Visual Communications, and LA Artcore."
         }
@@ -2439,7 +2439,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "8",
-          "image": "images/Photo#8.png",
+          "image": "images/Photo8.png",
           "html": "See Photo #8:  This is a mock-up of the city light-pole sign designating the location of the Finale Jazz Club during the Bronzeville era during WW2.",
           "text": "See Photo #8:  This is a mock-up of the city light-pole sign designating the location of the Finale Jazz Club during the Bronzeville era during WW2."
         },
@@ -2451,7 +2451,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "9",
-          "image": "images/Photo#9.jpg",
+          "image": "images/Photo9.jpg",
           "html": "See Photo #9:  this is a photo of the lantern commemorating the civil rights pioneer Sei Fujii in the Japanese Village Plaza ",
           "text": "See Photo #9:  this is a photo of the lantern commemorating the civil rights pioneer Sei Fujii in the Japanese Village Plaza"
         },
@@ -2468,7 +2468,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "10",
-          "image": "images/Photo#10.jpg",
+          "image": "images/Photo10.jpg",
           "html": "See Photo #10:  this is the movie poster of the Sei Fujii short film entitled “Li’l Tokyo Reporter”, autographed by cast and crew.",
           "text": "See Photo #10:  this is the movie poster of the Sei Fujii short film entitled “Li’l Tokyo Reporter”, autographed by cast and crew."
         },
@@ -2587,7 +2587,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "11",
-          "image": "images/Photo#11.jpg",
+          "image": "images/Photo11.jpg",
           "html": "See Photo #11:  This is a photo of the march through Little Tokyo to advocate for the building of the gymnasium, with demonstrators carrying signs and placards and a drum, and wearing sports gear to visibly make their point.  At this time, the gym was called the Little Tokyo Recreation Center.",
           "text": "See Photo #11:  This is a photo of the march through Little Tokyo to advocate for the building of the gymnasium, with demonstrators carrying signs and placards and a drum, and wearing sports gear to visibly make their point.  At this time, the gym was called the Little Tokyo Recreation Center."
         },
@@ -2693,9 +2693,9 @@ const MEMOIR_STORY = {
           "type": "photo_callout",
           "photoNumber": "12, 13 & 14",
           "images": [
-            "images/Photo#12.jpeg",
-            "images/Photo#13.jpeg",
-            "images/Photo#14.JPG"
+            "images/Photo12.jpeg",
+            "images/Photo13.jpeg",
+            "images/Photo14.JPG"
           ],
           "html": "See Photo#12 and Photo#13:  Photo of the Terasaki Budokan while still under construction in 2020.  The dream of a gym in Little Tokyo was finally realized and the goal of bringing youth and young  families and others to Little Tokyo is now a reality.  Photo#13 is the interior courtyard patio of the Budokan.  Photo#14 is the “topping off” ceremony where the highest steel beam is put into position, a key moment celebrated by an enthusiastic crowd of gym project supporters.",
           "text": "See Photo#12 and Photo#13:  Photo of the Terasaki Budokan while still under construction in 2020.  The dream of a gym in Little Tokyo was finally realized and the goal of bringing youth and young  families and others to Little Tokyo is now a reality.  Photo#13 is the interior courtyard patio of the Budokan.  Photo#14 is the “topping off” ceremony where the highest steel beam is put into position, a key moment celebrated by an enthusiastic crowd of gym project supporters."
@@ -2920,7 +2920,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "15",
-          "image": "images/Photo#15.jpg",
+          "image": "images/Photo15.jpg",
           "html": "See Photo#15:  Huell Howser poses with a tofu/soy smoothie flanked by me and my wife and daughter who volunteered at the Tofu Festival.",
           "text": "See Photo#15:  Huell Howser poses with a tofu/soy smoothie flanked by me and my wife and daughter who volunteered at the Tofu Festival."
         },
@@ -3211,7 +3211,7 @@ const MEMOIR_STORY = {
         {
           "type": "photo_callout",
           "photoNumber": "16",
-          "image": "images/Photo#16.png",
+          "image": "images/Photo16.png",
           "html": "See Photo#16:  The building purchased by the LTCIF in 2025 on E. First St. in Little Tokyo with 3 commercial storefronts and offices on the 2nd floor.  The building will be named the Alan Nishio Bldg in honor of longtime community activist Alan Nishio.",
           "text": "See Photo#16:  The building purchased by the LTCIF in 2025 on E. First St. in Little Tokyo with 3 commercial storefronts and offices on the 2nd floor.  The building will be named the Alan Nishio Bldg in honor of longtime community activist Alan Nishio."
         },
